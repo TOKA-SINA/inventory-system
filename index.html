@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ინვენტარიზაციის სისტემა</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; margin: 0; height: 100vh; background-color: #f8f9fa; }
+        
+        /* მარცხენა პანელის დიზაინი */
+        #sidebar { width: 250px; background: #2c3e50; color: white; padding: 20px; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
+        #sidebar h3 { text-align: center; border-bottom: 1px solid #34495e; padding-bottom: 10px; margin-top: 0; }
+        #sidebar ul { list-style: none; padding: 0; }
+        #sidebar ul li { margin: 15px 0; }
+        #sidebar ul li a { color: #ecf0f1; text-decoration: none; font-size: 16px; display: block; padding: 10px; border-radius: 4px; transition: background 0.3s; }
+        #sidebar ul li a:hover { background: #34495e; }
+        .alert-menu { color: #e74c3c !important; font-weight: bold; }
+        
+        /* მთავარი სამუშაო სივრცე */
+        #main { flex-grow: 1; padding: 30px; overflow-y: auto; }
+        .search-box { margin-bottom: 20px; }
+        input[type="text"] { width: 100%; max-width: 600px; padding: 12px; font-size: 16px; border: 1px solid #ced4da; border-radius: 4px; }
+        
+        /* ცხრილის დიზაინი */
+        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        th, td { border: 1px solid #dee2e6; padding: 12px; text-align: left; }
+        th { background-color: #3498db; color: white; position: sticky; top: 0; }
+        tr:nth-child(even) { background-color: #f8f9fa; }
+        tr:hover { background-color: #f1f3f5; }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <h3>მართვის პანელი</h3>
+        <ul>
+            <li><a href="#" style="background: #34495e;">ნომენკლატურა</a></li>
+            <li><a href="#">მიღება / განთავსება</a></li>
+            <li><a href="#" class="alert-menu">ცარიელი თაროს რეპორტი</a></li>
+        </ul>
+    </div>
+
+    <div id="main">
+        <h2 style="margin-top:0;">პროდუქტების ძიება</h2>
+        
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="მოძებნე კოდით ან დასახელებით...">
+        </div>
+        
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th>კოდი</th>
+                    <th>დასახელება</th>
+                    <th>ჯგუფი</th>
+                    <th>ბრენდი (მარკა)</th>
+                    <th>OEM / ზომა</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                </tbody>
+        </table>
+    </div>
+
+    <script>
+        let products = [];
+
+        // ვტვირთავთ მონაცემებს data.json ფაილიდან
+        fetch('data.json')
+            .then(response => response.json())
+            .then(data => {
+                products = data;
+                // თავიდან გამოგვაქვს მხოლოდ 50 ცალი, რომ ბრაუზერმა არ გაჭედოს 23,000 ხაზის ერთბაშად დახატვით
+                renderTable(products.slice(0, 50)); 
+            })
+            .catch(error => console.error('შეცდომა ბაზის ჩატვირთვისას:', error));
+
+        // ცხრილის აგების ფუნქცია
+        function renderTable(dataToRender) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            
+            dataToRender.forEach(item => {
+                const row = document.createElement('tr');
+                
+                // აქ ლოგიკაში მომავალში ჩავამატებთ IF პირობას ნულოვანი ნაშთების გამოსარიცხად
+                
+                row.innerHTML = `
+                    <td><strong>${item.kodi || ''}</strong></td>
+                    <td>${item.dasaxeleba || ''}</td>
+                    <td>${item.jgufi || ''}</td>
+                    <td>${item.marka || ''}</td>
+                    <td>${item.OEM || ''} ${item.zoma ? ' / ' + item.zoma : ''}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // საძიებო ველის ლოგიკა (მომენტალური ძებნა)
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const searchText = e.target.value.toLowerCase();
+            
+            if(searchText.length < 2) {
+                renderTable(products.slice(0, 50));
+                return;
+            }
+            
+            const filteredProducts = products.filter(p => 
+                (p.kodi && p.kodi.toLowerCase().includes(searchText)) || 
+                (p.dasaxeleba && p.dasaxeleba.toLowerCase().includes(searchText)) ||
+                (p.OEM && p.OEM.toLowerCase().includes(searchText))
+            );
+            
+            renderTable(filteredProducts.slice(0, 100));
+        });
+    </script>
+</body>
+</html>
