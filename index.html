@@ -8,7 +8,7 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; margin: 0; height: 100vh; background-color: #f8f9fa; }
         
         /* მარცხენა პანელის დიზაინი */
-        #sidebar { width: 250px; background: #2c3e50; color: white; padding: 20px; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
+        #sidebar { width: 250px; background: #2c3e50; color: white; padding: 20px; box-shadow: 2px 0 5px rgba(0,0,0,0.1); flex-shrink: 0; }
         #sidebar h3 { text-align: center; border-bottom: 1px solid #34495e; padding-bottom: 10px; margin-top: 0; }
         #sidebar ul { list-style: none; padding: 0; }
         #sidebar ul li { margin: 15px 0; }
@@ -23,10 +23,13 @@
         
         /* ცხრილის დიზაინი */
         table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        th, td { border: 1px solid #dee2e6; padding: 12px; text-align: left; }
-        th { background-color: #3498db; color: white; position: sticky; top: 0; }
+        th, td { border: 1px solid #dee2e6; padding: 10px 12px; text-align: left; vertical-align: middle; }
+        th { background-color: #3498db; color: white; position: sticky; top: 0; z-index: 10; font-size: 14px;}
+        td { font-size: 13px; }
         tr:nth-child(even) { background-color: #f8f9fa; }
         tr:hover { background-color: #f1f3f5; }
+        .extra-codes { color: #555; font-size: 12px; }
+        .oem-text { color: #d35400; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -44,17 +47,19 @@
         <h2 style="margin-top:0;">პროდუქტების ძიება</h2>
         
         <div class="search-box">
-            <input type="text" id="searchInput" placeholder="მოძებნე კოდით ან დასახელებით...">
+            <input type="text" id="searchInput" placeholder="მოძებნე ნებისმიერი კოდით, OEM-ით ან დასახელებით...">
         </div>
         
         <table id="dataTable">
             <thead>
                 <tr>
-                    <th>კოდი</th>
-                    <th>დასახელება</th>
-                    <th>ჯგუფი</th>
-                    <th>ბრენდი (მარკა)</th>
-                    <th>OEM / ზომა</th>
+                    <th style="width: 10%;">კოდი</th>
+                    <th style="width: 12%;">OEM</th>
+                    <th style="width: 15%;">დამატებითი კოდები</th>
+                    <th style="width: 28%;">დასახელება</th>
+                    <th style="width: 12%;">ჯგუფი</th>
+                    <th style="width: 12%;">ბრენდი (მარკა)</th>
+                    <th style="width: 11%;">მოდელი / წელი</th>
                 </tr>
             </thead>
             <tbody id="tableBody">
@@ -65,52 +70,69 @@
     <script>
         let products = [];
 
-        // ვტვირთავთ მონაცემებს data.json ფაილიდან
         fetch('data.json')
             .then(response => response.json())
             .then(data => {
                 products = data;
-                // თავიდან გამოგვაქვს მხოლოდ 50 ცალი, რომ ბრაუზერმა არ გაჭედოს 23,000 ხაზის ერთბაშად დახატვით
                 renderTable(products.slice(0, 50)); 
             })
             .catch(error => console.error('შეცდომა ბაზის ჩატვირთვისას:', error));
 
-        // ცხრილის აგების ფუნქცია
         function renderTable(dataToRender) {
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
             
             dataToRender.forEach(item => {
-                const row = document.createElement('tr');
                 
-                // აქ ლოგიკაში მომავალში ჩავამატებთ IF პირობას ნულოვანი ნაშთების გამოსარიცხად
+                // ვაგროვებთ ყველა დამატებით კოდს. ვფილტრავთ, რომ ცარიელი არ გამოჩნდეს.
+                let extraCodesArray = [item.kodi1, item.kodi2, item.kodi3, item.kodi4, item.kodi_farna, item.kodi2_farna];
+                let extraCodes = extraCodesArray.filter(code => code && code.toString().trim() !== "").join(", ");
+
+                // ვაგროვებთ მოდელს და წელს ერთად
+                let modelYearArray = [item.modeli, item.weli];
+                let modelYear = modelYearArray.filter(val => val && val.toString().trim() !== "").join(" / ");
+
+                const row = document.createElement('tr');
                 
                 row.innerHTML = `
                     <td><strong>${item.kodi || ''}</strong></td>
-                    <td>${item.dasaxeleba || ''}</td>
+                    <td class="oem-text">${item.OEM || ''}</td>
+                    <td class="extra-codes">${extraCodes}</td>
+                    <td>${item.dasaxeleba || ''} ${item.zoma ? '<br><small>ზომა: ' + item.zoma + '</small>' : ''}</td>
                     <td>${item.jgufi || ''}</td>
                     <td>${item.marka || ''}</td>
-                    <td>${item.OEM || ''} ${item.zoma ? ' / ' + item.zoma : ''}</td>
+                    <td><small>${modelYear}</small></td>
                 `;
                 tbody.appendChild(row);
             });
         }
 
-        // საძიებო ველის ლოგიკა (მომენტალური ძებნა)
+        // გაუმჯობესებული საძიებო სისტემა
         document.getElementById('searchInput').addEventListener('input', function(e) {
-            const searchText = e.target.value.toLowerCase();
+            const searchText = e.target.value.toLowerCase().trim();
             
             if(searchText.length < 2) {
                 renderTable(products.slice(0, 50));
                 return;
             }
             
-            const filteredProducts = products.filter(p => 
-                (p.kodi && p.kodi.toLowerCase().includes(searchText)) || 
-                (p.dasaxeleba && p.dasaxeleba.toLowerCase().includes(searchText)) ||
-                (p.OEM && p.OEM.toLowerCase().includes(searchText))
-            );
+            const filteredProducts = products.filter(p => {
+                // უსაფრთხოების ფუნქცია, რომ ცარიელმა (null) მნიშვნელობებმა არ გაჭედოს ძებნა
+                const safeInclude = (val) => val && val.toString().toLowerCase().includes(searchText);
+
+                return safeInclude(p.kodi) || 
+                       safeInclude(p.OEM) || 
+                       safeInclude(p.dasaxeleba) ||
+                       safeInclude(p.kodi1) || 
+                       safeInclude(p.kodi2) || 
+                       safeInclude(p.kodi3) || 
+                       safeInclude(p.kodi4) || 
+                       safeInclude(p.kodi_farna) || 
+                       safeInclude(p.kodi2_farna) ||
+                       safeInclude(p.marka);
+            });
             
+            // ვზღუდავთ 100 ჩანაწერამდე, რომ ბრაუზერი არ გადაიტვირთოს ძიებისას
             renderTable(filteredProducts.slice(0, 100));
         });
     </script>
